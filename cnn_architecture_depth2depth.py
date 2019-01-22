@@ -1,27 +1,26 @@
 # =========== #
 #  Libraries  #
 # =========== #
+import warnings
+from glob import glob
+
+import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-import warnings, os
-import cv2
-
-from glob import glob
+from keras import backend as K
+from keras.callbacks import Callback
 from keras.layers import Conv2D, Input, MaxPooling2D as Pool, BatchNormalization as BN, UpSampling2D
 from keras.models import Model
 from keras.optimizers import SGD
-from keras.callbacks import Callback
 from scipy import misc
 from skimage.transform import resize
-from keras import backend as K
 
-import matplotlib.pyplot as plt
-
-# import keras.backend as K
 # from keras.applications.resnet50 import ResNet50, preprocess_input
 # from keras.applications import VGG16
 
 warnings.filterwarnings("ignore")
+
 
 # =========== #
 #  Functions  #
@@ -225,8 +224,10 @@ def imageLoader(depth_sparse_filenames, depth_gt_filenames, batch_size=4):
             batch_start += batch_size
             batch_end += batch_size
 
+
 def mat2uint8(mat):
     return cv2.convertScaleAbs(mat * (255 / np.max(mat)))  # Only for Visualization Purpose
+
 
 class CollectOutputAndTarget(Callback):
     def __init__(self):
@@ -267,7 +268,6 @@ class LossHistory(Callback):
 
     def on_batch_end(self, batch, logs={}):
         self.losses.append(logs.get('loss'))
-
 
 
 # ====== #
