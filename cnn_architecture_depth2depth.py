@@ -2,60 +2,65 @@
 #  Libraries  #
 # =========== #
 import numpy as np
+import tensorflow as tf
+import warnings, os
+import cv2
 
 from glob import glob
 from keras.layers import Conv2D, Input, MaxPooling2D as Pool, BatchNormalization as BN, UpSampling2D
 from keras.models import Model
 from keras.optimizers import SGD
+from keras.callbacks import Callback
 from scipy import misc
 from skimage.transform import resize
+from keras import backend as K
 
-# import cv2
-# import sys, os
-# from keras.applications.resnet50 import ResNet50, preprocess_input
+import matplotlib.pyplot as plt
+
 # import keras.backend as K
-# import glob
+# from keras.applications.resnet50 import ResNet50, preprocess_input
 # from keras.applications import VGG16
 
+warnings.filterwarnings("ignore")
 
 # =========== #
 #  Functions  #
 # =========== #
 def model_1():
-    input_layer = Input(shape=(224,224,1))
+    input_layer = Input(shape=(224, 224, 1))
     conv_1_a = Conv2D(8, 3, activation="relu", padding="same")(input_layer)
     conv_1_b = Conv2D(8, 3, activation="relu", padding="same")(conv_1_a)
-    pool_1 = Pool((2,2))(conv_1_b)
+    pool_1 = Pool((2, 2))(conv_1_b)
 
     conv_2_a = Conv2D(16, 3, activation="relu", padding="same")(pool_1)
     conv_2_b = Conv2D(16, 3, activation="relu", padding="same")(conv_2_a)
-    pool_2 = Pool((2,2))(conv_2_b)
+    pool_2 = Pool((2, 2))(conv_2_b)
 
     bn = BN()(pool_2)
 
     conv_3_a = Conv2D(32, 3, activation="relu", padding="same")(bn)
     conv_3_b = Conv2D(32, 3, activation="relu", padding="same")(conv_3_a)
     conv_3_c = Conv2D(32, 3, activation="relu", padding="same")(conv_3_b)
-    pool_3 = Pool((2,2))(conv_3_c)
+    pool_3 = Pool((2, 2))(conv_3_c)
 
-    up_1 = UpSampling2D((2,2))(pool_3)
+    up_1 = UpSampling2D((2, 2))(pool_3)
     conv_4_a = Conv2D(16, 3, activation="relu", padding="same")(up_1)
     conv_4_b = Conv2D(16, 3, activation="relu", padding="same")(conv_4_a)
 
-    up_2 = UpSampling2D((2,2))(conv_4_a)
+    up_2 = UpSampling2D((2, 2))(conv_4_a)
     conv_5_a = Conv2D(8, 3, activation="relu", padding="same")(up_2)
     conv_5_b = Conv2D(8, 3, activation="relu", padding="same")(conv_5_a)
 
-    up_3 = UpSampling2D((2,2))(conv_5_b)
+    up_3 = UpSampling2D((2, 2))(conv_5_b)
     conv_out = Conv2D(1, 3, activation="sigmoid", padding="same")(up_3)
 
-    model = Model(inputs=input_layer,outputs=conv_out)
+    model = Model(inputs=input_layer, outputs=conv_out)
 
     return model
 
-def model_2():
 
-    input_layer = Input(shape=(224,224,1))
+def model_2():
+    input_layer = Input(shape=(224, 224, 1))
     conv = Conv2D(4, 3, activation="relu", padding="same")(input_layer)
     conv = BN()(conv)
     conv = Conv2D(8, 3, activation="relu", padding="same")(conv)
@@ -75,13 +80,13 @@ def model_2():
     conv = Conv2D(4, 3, activation="relu", padding="same")(conv)
     conv_out = Conv2D(1, 3, activation="sigmoid", padding="same")(conv)
 
-    model = Model(inputs=input_layer,outputs=conv_out)
+    model = Model(inputs=input_layer, outputs=conv_out)
 
     return model
 
-def model_3():
 
-    input_layer = Input(shape=(224,224,3))
+def model_3():
+    input_layer = Input(shape=(224, 224, 3))
 
     from keras.layers import Conv2DTranspose as DeConv
     resnet = ResNet50(include_top=False, weights="imagenet")
@@ -90,96 +95,57 @@ def model_3():
     res_features = resnet(input_layer)
 
     conv = DeConv(1024, padding="valid", activation="relu", kernel_size=3)(res_features)
-    conv = UpSampling2D((2,2))(conv)
+    conv = UpSampling2D((2, 2))(conv)
     conv = DeConv(512, padding="valid", activation="relu", kernel_size=5)(conv)
-    conv = UpSampling2D((2,2))(conv)
+    conv = UpSampling2D((2, 2))(conv)
     conv = DeConv(128, padding="valid", activation="relu", kernel_size=5)(conv)
-    conv = UpSampling2D((2,2))(conv)
+    conv = UpSampling2D((2, 2))(conv)
     conv = DeConv(32, padding="valid", activation="relu", kernel_size=5)(conv)
-    conv = UpSampling2D((2,2))(conv)
+    conv = UpSampling2D((2, 2))(conv)
     conv = DeConv(8, padding="valid", activation="relu", kernel_size=5)(conv)
-    conv = UpSampling2D((2,2))(conv)
+    conv = UpSampling2D((2, 2))(conv)
     conv = DeConv(4, padding="valid", activation="relu", kernel_size=5)(conv)
     conv = DeConv(1, padding="valid", activation="sigmoid", kernel_size=5)(conv)
 
     model = Model(inputs=input_layer, outputs=conv)
     return model
 
+
 def model_4():
-    input_layer = Input(shape=(224,224,3))
+    input_layer = Input(shape=(224, 224, 3))
     conv_1_a = VGG16(weights='imagenet', include_top=False)(input_layer)
     # conv_1_a = Conv2D(8, 3, activation="relu", padding="same")(input_layer)
     conv_1_b = Conv2D(8, 3, activation="relu", padding="same")(conv_1_a)
-    pool_1 = Pool((2,2))(conv_1_b)
+    pool_1 = Pool((2, 2))(conv_1_b)
 
     conv_2_a = Conv2D(16, 3, activation="relu", padding="same")(pool_1)
     conv_2_b = Conv2D(16, 3, activation="relu", padding="same")(conv_2_a)
-    pool_2 = Pool((2,2))(conv_2_b)
+    pool_2 = Pool((2, 2))(conv_2_b)
 
     bn = BN()(pool_2)
 
     conv_3_a = Conv2D(32, 3, activation="relu", padding="same")(bn)
     conv_3_b = Conv2D(32, 3, activation="relu", padding="same")(conv_3_a)
     conv_3_c = Conv2D(32, 3, activation="relu", padding="same")(conv_3_b)
-    pool_3 = Pool((2,2))(conv_3_c)
+    pool_3 = Pool((2, 2))(conv_3_c)
 
-    up_1 = UpSampling2D((2,2))(pool_3)
+    up_1 = UpSampling2D((2, 2))(pool_3)
     conv_4_a = Conv2D(16, 3, activation="relu", padding="same")(up_1)
     conv_4_b = Conv2D(16, 3, activation="relu", padding="same")(conv_4_a)
 
-    up_2 = UpSampling2D((2,2))(conv_4_a)
+    up_2 = UpSampling2D((2, 2))(conv_4_a)
     conv_5_a = Conv2D(8, 3, activation="relu", padding="same")(up_2)
     conv_5_b = Conv2D(8, 3, activation="relu", padding="same")(conv_5_a)
 
-    up_3 = UpSampling2D((2,2))(conv_5_b)
+    up_3 = UpSampling2D((2, 2))(conv_5_b)
     conv_out = Conv2D(1, 3, activation="sigmoid", padding="same")(up_3)
 
-    model = Model(inputs=input_layer,outputs=conv_out)
+    model = Model(inputs=input_layer, outputs=conv_out)
 
     return model
 
-def read_imageX(dsPath):
-    depth_sparse = misc.imread(dsPath).astype(np.uint16)/1000.0
-    depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
 
-    return np.expand_dims(np.expand_dims(depth_sparse_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
-
-
-def read_imageY(dPath):
-    depth = misc.imread(dPath).astype(np.uint16)/1000.0
-    depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
-
-    return np.expand_dims(np.expand_dims(depth_resized,-1), 0)  # (224, 224) -> (1, 224, 224, 1)
-
-# TODO: Se as funções acima funcionarem não preciso desta função
-def read_image(i):
-    dsPath = depth_sparse_filenames[i]
-    dPath = depth_gt_filenames[i]
-    print(i)
-
-    depth_sparse = misc.imread(dsPath).astype(np.uint16)/1000.0
-    depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))
-
-    depth = misc.imread(dPath).astype(np.uint16)/1000.0
-    depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
-
-    # print(np.expand_dims(depth_sparse_resized,-1).shape)
-    # print(np.expand_dims(depth_resized,-1).shape)
-    # print(preprocess_input(np.expand_dims(depth_sparse_resized,-1)))
-    # input("aki")
-
-    # stacked_img = np.stack((depth_sparse_resized,) * 3, axis=-1)
-    # print(stacked_img.shape)
-    # input('aki')
-
-    # return stacked_img, np.expand_dims(depth_resized,-1)
-    return np.expand_dims(depth_sparse_resized,-1), np.expand_dims(depth_resized,-1)
-
-    # return preprocess_input(np.expand_dims(depth_sparse_resized,-1)), np.expand_dims(depth_resized,-1)
-    # return preprocess_input(misc.imread(rPath)/1.), np.expand_dims(misc.imread(dPath, 0),-1)/255.
-    # return preprocess_input(cv2.imread(rPath)/1.), np.expand_dims(cv2.imread(dPath, 0),-1)/255.
-
-class NYUDepth():
+class NYUDepth:
     def __init__(self):
         self.depth_sparse_filenames = None
         self.depth_gt_filenames = None
@@ -194,7 +160,6 @@ class NYUDepth():
 
         self.depth_sparse_filenames = sorted(glob('nyu_depth/*/*_depth_sparse.png'))
         self.depth_gt_filenames = sorted(glob('nyu_depth/*/*_depth.png'))
-
 
     def train_test_split(self):
         # Inputs
@@ -219,7 +184,20 @@ class NYUDepth():
             print(self.Y_valid)
             print(len(self.Y_valid))
 
-# fileList = listOfFiles
+
+def read_imageX(dsPath):
+    depth_sparse = misc.imread(dsPath).astype(np.uint16) / 1000.0
+    depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
+
+    return np.expand_dims(np.expand_dims(depth_sparse_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
+
+
+def read_imageY(dPath):
+    depth = misc.imread(dPath).astype(np.uint16) / 1000.0
+    depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
+
+    return np.expand_dims(np.expand_dims(depth_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
+
 
 def imageLoader(depth_sparse_filenames, depth_gt_filenames, batch_size=4):
     assert len(depth_sparse_filenames) == len(depth_gt_filenames)
@@ -242,10 +220,53 @@ def imageLoader(depth_sparse_filenames, depth_gt_filenames, batch_size=4):
             # print(Y_batch.shape)
             # input("Pause")
 
-            yield (X_batch, Y_batch) # A tuple with two numpy arrays with batch_size samples
+            yield (X_batch, Y_batch)  # A tuple with two numpy arrays with batch_size samples
 
             batch_start += batch_size
             batch_end += batch_size
+
+def mat2uint8(mat):
+    return cv2.convertScaleAbs(mat * (255 / np.max(mat)))  # Only for Visualization Purpose
+
+class CollectOutputAndTarget(Callback):
+    def __init__(self):
+        super(CollectOutputAndTarget, self).__init__()
+        self.targets = []  # collect y_true batches
+        self.outputs = []  # collect y_pred batches
+
+        # the shape of these 2 variables will change according to batch shape
+        # to handle the "last batch", specify `validate_shape=False`
+        self.var_y_true = tf.Variable(0., validate_shape=False)
+        self.var_y_pred = tf.Variable(0., validate_shape=False)
+
+    def on_batch_end(self, batch, logs=None):
+        # evaluate the variables and save them into lists
+        y_true = K.eval(self.var_y_true)
+        y_pred = K.eval(self.var_y_pred)
+
+        # print(y_true)
+        # print(y_pred)
+        # print(mat2uint8(y_true))
+        # print(mat2uint8(y_pred))
+
+        # TODO: Terminar
+        plt.figure(1)
+        plt.imshow(y_true[0, :, :, 0])
+        plt.draw()
+
+        plt.figure(2)
+        plt.imshow(y_pred[0, :, :, 0])
+        plt.draw()
+
+        plt.pause(0.001)
+
+
+class LossHistory(Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
+
+    def on_batch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
 
 
 
@@ -253,45 +274,63 @@ def imageLoader(depth_sparse_filenames, depth_gt_filenames, batch_size=4):
 #  Main  #
 # ====== #
 if __name__ == "__main__":
+    # ----- Dataset----- #
     dataset = NYUDepth()
 
-    dataset.read() # FIXME: Remove Limite, but attention more than 1200 figures will freeze system!!!
+    dataset.read()  # FIXME: Remove Limite, but attention more than 1200 figures will freeze system!!!
     # dataset.train_test_split()
     dataset.summary()
 
-    model = model_1()
+    # ----- Model Definition----- #
+    model_num = 1
+    model_name = ['hourglass', 'block', 'resglass'][model_num - 1]
+    if model_num == 1:
+        model = model_1()
+    elif model_num == 2:
+        model = model_2()
+    elif model_num == 3:
+        # model = VGG16(weights='imagenet', include_top=False)
+        model = model_4()
+    else:
+        model = model_3()
 
+    model.summary()
 
+    input("Press ENTER to start training...")
+
+    # ----- Training Configuration ----- #
     lr = 1e-3
-    model.compile(loss="mse", optimizer=SGD(lr=lr, decay=1e-2))
-    model.fit_generator(imageLoader(dataset.depth_sparse_filenames, dataset.depth_gt_filenames, batch_size=4), steps_per_epoch=100, epochs=10)
+    decay = 1e-2
+    batch_size = 4
+    steps_per_epoch = 30000
+    epochs = 10
 
+    model.compile(loss="mse", optimizer=SGD(lr=lr, decay=decay))
 
+    # CallBacks Declaration
+    # initialize the variables and the `tf.assign` ops
+    cbk = CollectOutputAndTarget()
+    fetches = [tf.assign(cbk.var_y_true, model.targets[0], validate_shape=False),
+               tf.assign(cbk.var_y_pred, model.outputs[0], validate_shape=False)]
+    model._function_kwargs = {'fetches': fetches}  # use `model._function_kwargs` if using `Model` instead of `Sequential`
 
-    # images = map(read_image, range(len(depth_sparse_filenames)))
-    # X, Y = map(np.array, zip(*images))
-    #
-    # # model_num = int(sys.argv[1])
-    # model_num = 1
-    # model_name = ['hourglass','block','resglass'][model_num - 1]
-    # if model_num == 1:
-    #     model = model_1()
-    # elif model_num == 2:
-    #     model = model_2()
-    # elif model_num == 3:
-    #     # model = VGG16(weights='imagenet', include_top=False)
-    #     model = model_4()
-    # else:
-    #     model = model_3()
-    # model.summary()
-    #
-    # print(X.shape, Y.shape)
-    # print('Training ...')
-    #
+    # history = LossHistory()
+
+    # ----- Run Training ----- #
+    model.fit_generator(imageLoader(dataset.depth_sparse_filenames, dataset.depth_gt_filenames, batch_size), steps_per_epoch, epochs, callbacks=[cbk])
+    # model.fit_generator(imageLoader(dataset.depth_sparse_filenames, dataset.depth_gt_filenames, batch_size), steps_per_epoch, epochs, callbacks=[cbk, history])
+
+    # ----- Results ----- #
+    # print(history.losses)
+
+    # ----- Save ----- #
+    model.save_weights('weights_%s.h5' % model_name)
+    model.save('model_%s.h5' % model_name)
+
     # out_folder = 'preds_final'
     # if not os.path.exists(out_folder):
     #     os.makedirs(out_folder)
-    # weightsPath = 'weigts_%s.h5' % model_name
+    # weightsPath = 'weights_%s.h5' % model_name
     #
     # lr = 0.1
     #
