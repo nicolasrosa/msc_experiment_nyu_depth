@@ -11,7 +11,7 @@ import tensorflow as tf
 
 from keras import backend as K
 from keras.callbacks import Callback
-from keras.layers import Conv2D, Input, MaxPooling2D as Pool, BatchNormalization as BN, UpSampling2D
+from keras.layers import Conv2D, Input, MaxPooling2D as Pool, BatchNormalization as BN, UpSampling2D, ZeroPadding2D
 from keras.models import Model
 from keras.optimizers import SGD
 from keras.applications.resnet50 import ResNet50, preprocess_input
@@ -61,7 +61,7 @@ def model_1():
 
 
 def model_2():
-    input_layer = Input(shape=(224, 224, 1))
+    input_layer = Input(shape=(224, 224, 3))
     conv = Conv2D(4, 3, activation="relu", padding="same")(input_layer)
     conv = BN()(conv)
     conv = Conv2D(8, 3, activation="relu", padding="same")(conv)
@@ -109,27 +109,45 @@ def model_3():
     conv = DeConv(1, padding="valid", activation="sigmoid", kernel_size=5)(conv)
 
     model = Model(inputs=input_layer, outputs=conv)
+
     return model
 
 
 def model_4():
-    resnet = ResNet50(include_top=False, weights="imagenet")
+    # ----- Base Model ----- #
+    resnet_model = ResNet50(include_top=False, weights="imagenet")
+    # resnet_model.summary()
 
-    # res50_model.layers.pop(0)
-    # res50_model.summary()
-    # add
-    # new
-    # input
-    # layer:
-    #
-    # newInput = Input(batch_shape=(0, 299, 299, 3))  # let us say this new InputLayer
-    # newOutputs = res50_model(newInput)
-    # newModel = Model(newInput, newOutputs)
-    #
-    # newModel.summary()
-    # res50_model.summary()
+    # print(resnet_model.layers[0].output)
+    # print(resnet_model.layers[1].output)
+    # print(resnet_model.layers[2].output)
+    # print(resnet_model.layers[3].output)
 
-    return model
+    # Removes previous input and conv1_pad layers
+    resnet_model.layers.pop(0)
+    # resnet_model.layers.pop(0)
+    # resnet_model.layers.pop(0)
+    resnet_model.layers.pop()
+    resnet_model.summary()
+
+    # ----- New Model ----- #
+    # Overwrites ResNet layers
+    new_input_layer = Input(batch_shape=(None, 224, 224, 3)) # FIXME: O mais correto seria (224, 224, 1)
+    # new_conv1_pad = ZeroPadding2D(padding=(1, 1))(new_input_layer)
+    # new_conv_1 = Conv2D(1, 3, activation="relu", padding="same")(new_conv1_pad)
+    # new_outputs = resnet_model(new_conv1_pad)
+
+    resnet_output = resnet_model(new_input_layer)
+    new_outputs = Conv2D(1, 3, activation="sigmoid", padding="same")(resnet_output)
+
+    new_model = Model(new_input_layer, new_outputs)
+
+    # FIXME: Use `get_output_at(node_index)` instead.
+    # print(new_model.layers[0].output)
+    # print(new_model.layers[1].output)
+    # print(new_model.layers[2].output)
+
+    return new_model
 
 
 class NYUDepth:
@@ -174,17 +192,31 @@ class NYUDepth:
 
 def read_imageX(dsPath):
     depth_sparse = misc.imread(dsPath).astype(np.uint16) / 1000.0
-    depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
+    depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480, 640) -> (224, 224)
+    depth_sparse_resized_stacked = np.stack((depth_sparse_resized,)*3, axis=-1)  # (480, 640) -> Model Input (224, 224, 3)
+    depth_sparse_resized_stacked_exp = np.expand_dims(depth_sparse_resized_stacked, axis=0)  # (224, 224, 3) -> (1, 224, 224, 3)
 
-    return np.expand_dims(np.expand_dims(depth_sparse_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
+    # print(depth_sparse.shape)
+    # print(depth_sparse_resized.shape)
+    # print(depth_sparse_resized_stacked.shape)
+    # print(depth_sparse_resized_stacked_exp.shape)
+
+    # return np.expand_dims(np.expand_dims(depth_sparse_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
+    return depth_sparse_resized_stacked_exp
 
 
 def read_imageY(dPath):
     depth = misc.imread(dPath).astype(np.uint16) / 1000.0
-    depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
+    depth_resized = resize(depth, output_shape=(7, 7))  # (480,640) -> Model Output (224, 224)
 
     return np.expand_dims(np.expand_dims(depth_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
 
+# def read_imageY(dPath):
+#     depth = misc.imread(dPath).astype(np.uint16) / 1000.0
+#     depth_resized = resize(depth, output_shape=(7, 7))  # (480,640) -> Model Output (224, 224)
+#     depth_resized_exp = np.expand_dims(depth_resized, axis=0)  # (224, 224) -> (1, 224, 224)
+#
+#     return depth_resized_exp
 
 def imageLoader(depth_sparse_filenames, depth_gt_filenames, batch_size=4):
     assert len(depth_sparse_filenames) == len(depth_gt_filenames)
@@ -277,21 +309,20 @@ if __name__ == "__main__":
     dataset.summary()
 
     # ----- Model Definition----- #
-    model_num = 1
-    model_name = ['hourglass', 'block', 'resglass'][model_num - 1]
+    model_num = 4
+    model_name = ['hourglass', 'block', 'resglass', 'pirate'][model_num - 1]
     if model_num == 1:
         model = model_1()
     elif model_num == 2:
         model = model_2()
     elif model_num == 3:
-        # model = VGG16(weights='imagenet', include_top=False)
-        model = model_4()
-    else:
         model = model_3()
+    else:
+        model = model_4()
 
     model.summary()
 
-    input("Press ENTER to start training...")
+    input("Press ENTER to start training...")   # TODO: Descomentar
 
     # ----- Training Configuration ----- #
     lr = 1e-3
