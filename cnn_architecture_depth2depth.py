@@ -8,15 +8,17 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+
 from keras import backend as K
 from keras.callbacks import Callback
 from keras.layers import Conv2D, Input, MaxPooling2D as Pool, BatchNormalization as BN, UpSampling2D
 from keras.models import Model
 from keras.optimizers import SGD
+from keras.applications.resnet50 import ResNet50, preprocess_input
+
 from scipy import misc
 from skimage.transform import resize
 
-# from keras.applications.resnet50 import ResNet50, preprocess_input
 # from keras.applications import VGG16
 
 warnings.filterwarnings("ignore")
@@ -111,35 +113,21 @@ def model_3():
 
 
 def model_4():
-    input_layer = Input(shape=(224, 224, 3))
-    conv_1_a = VGG16(weights='imagenet', include_top=False)(input_layer)
-    # conv_1_a = Conv2D(8, 3, activation="relu", padding="same")(input_layer)
-    conv_1_b = Conv2D(8, 3, activation="relu", padding="same")(conv_1_a)
-    pool_1 = Pool((2, 2))(conv_1_b)
+    resnet = ResNet50(include_top=False, weights="imagenet")
 
-    conv_2_a = Conv2D(16, 3, activation="relu", padding="same")(pool_1)
-    conv_2_b = Conv2D(16, 3, activation="relu", padding="same")(conv_2_a)
-    pool_2 = Pool((2, 2))(conv_2_b)
-
-    bn = BN()(pool_2)
-
-    conv_3_a = Conv2D(32, 3, activation="relu", padding="same")(bn)
-    conv_3_b = Conv2D(32, 3, activation="relu", padding="same")(conv_3_a)
-    conv_3_c = Conv2D(32, 3, activation="relu", padding="same")(conv_3_b)
-    pool_3 = Pool((2, 2))(conv_3_c)
-
-    up_1 = UpSampling2D((2, 2))(pool_3)
-    conv_4_a = Conv2D(16, 3, activation="relu", padding="same")(up_1)
-    conv_4_b = Conv2D(16, 3, activation="relu", padding="same")(conv_4_a)
-
-    up_2 = UpSampling2D((2, 2))(conv_4_a)
-    conv_5_a = Conv2D(8, 3, activation="relu", padding="same")(up_2)
-    conv_5_b = Conv2D(8, 3, activation="relu", padding="same")(conv_5_a)
-
-    up_3 = UpSampling2D((2, 2))(conv_5_b)
-    conv_out = Conv2D(1, 3, activation="sigmoid", padding="same")(up_3)
-
-    model = Model(inputs=input_layer, outputs=conv_out)
+    # res50_model.layers.pop(0)
+    # res50_model.summary()
+    # add
+    # new
+    # input
+    # layer:
+    #
+    # newInput = Input(batch_shape=(0, 299, 299, 3))  # let us say this new InputLayer
+    # newOutputs = res50_model(newInput)
+    # newModel = Model(newInput, newOutputs)
+    #
+    # newModel.summary()
+    # res50_model.summary()
 
     return model
 
@@ -232,16 +220,19 @@ def mat2uint8(mat):
 class CollectOutputAndTarget(Callback):
     def __init__(self):
         super(CollectOutputAndTarget, self).__init__()
+        self.inputs = []  # collect x_input batches
         self.targets = []  # collect y_true batches
         self.outputs = []  # collect y_pred batches
 
         # the shape of these 2 variables will change according to batch shape
         # to handle the "last batch", specify `validate_shape=False`
+        self.var_x_input = tf.Variable(0., validate_shape=False)
         self.var_y_true = tf.Variable(0., validate_shape=False)
         self.var_y_pred = tf.Variable(0., validate_shape=False)
 
     def on_batch_end(self, batch, logs=None):
         # evaluate the variables and save them into lists
+        x_input = K.eval(self.var_x_input)
         y_true = K.eval(self.var_y_true)
         y_pred = K.eval(self.var_y_pred)
 
@@ -252,10 +243,14 @@ class CollectOutputAndTarget(Callback):
 
         # TODO: Terminar
         plt.figure(1)
-        plt.imshow(y_true[0, :, :, 0])
+        plt.imshow(x_input[0, :, :, 0])
         plt.draw()
 
         plt.figure(2)
+        plt.imshow(y_true[0, :, :, 0])
+        plt.draw()
+
+        plt.figure(3)
         plt.imshow(y_pred[0, :, :, 0])
         plt.draw()
 
@@ -277,7 +272,7 @@ if __name__ == "__main__":
     # ----- Dataset----- #
     dataset = NYUDepth()
 
-    dataset.read()  # FIXME: Remove Limite, but attention more than 1200 figures will freeze system!!!
+    dataset.read()
     # dataset.train_test_split()
     dataset.summary()
 
@@ -310,7 +305,8 @@ if __name__ == "__main__":
     # CallBacks Declaration
     # initialize the variables and the `tf.assign` ops
     cbk = CollectOutputAndTarget()
-    fetches = [tf.assign(cbk.var_y_true, model.targets[0], validate_shape=False),
+    fetches = [tf.assign(cbk.var_x_input, model.inputs[0], validate_shape=False),
+               tf.assign(cbk.var_y_true, model.targets[0], validate_shape=False),
                tf.assign(cbk.var_y_pred, model.outputs[0], validate_shape=False)]
     model._function_kwargs = {'fetches': fetches}  # use `model._function_kwargs` if using `Model` instead of `Sequential`
 
