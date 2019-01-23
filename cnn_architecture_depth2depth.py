@@ -22,6 +22,7 @@ from skimage.transform import resize
 # from keras.applications import VGG16
 
 warnings.filterwarnings("ignore")
+showImages = False
 
 
 # =========== #
@@ -132,7 +133,7 @@ def model_4():
 
     # ----- New Model ----- #
     # Overwrites ResNet layers
-    new_input_layer = Input(batch_shape=(None, 224, 224, 3)) # FIXME: O mais correto seria (224, 224, 1)
+    new_input_layer = Input(batch_shape=(None, 224, 224, 3))  # FIXME: O mais correto seria (224, 224, 1)
     # new_conv1_pad = ZeroPadding2D(padding=(1, 1))(new_input_layer)
     # new_conv_1 = Conv2D(1, 3, activation="relu", padding="same")(new_conv1_pad)
     # new_outputs = resnet_model(new_conv1_pad)
@@ -211,8 +212,9 @@ class NYUDepth:
 def read_imageX(dsPath):
     depth_sparse = misc.imread(dsPath).astype(np.uint16) / 1000.0
     depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480, 640) -> (224, 224)
-    depth_sparse_resized_stacked = np.stack((depth_sparse_resized,)*3, axis=-1)  # (480, 640) -> Model Input (224, 224, 3)
-    depth_sparse_resized_stacked_exp = np.expand_dims(depth_sparse_resized_stacked, axis=0)  # (224, 224, 3) -> (1, 224, 224, 3)
+    depth_sparse_resized_stacked = np.stack((depth_sparse_resized,) * 3, axis=-1)  # (480, 640) -> (224, 224, 3)
+    depth_sparse_resized_stacked_exp = np.expand_dims(depth_sparse_resized_stacked,
+                                                      axis=0)  # (224, 224, 3) -> Model Input (1, 224, 224, 3)
 
     # print(depth_sparse.shape)
     # print(depth_sparse_resized.shape)
@@ -225,9 +227,12 @@ def read_imageX(dsPath):
 
 def read_imageY(dPath):
     depth = misc.imread(dPath).astype(np.uint16) / 1000.0
-    depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
+    depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> (224, 224)
+    depth_resized_exp = np.expand_dims(np.expand_dims(depth_resized, -1),
+                                       0)  # (224, 224) -> Model Output (1, 224, 224, 1)
 
-    return np.expand_dims(np.expand_dims(depth_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
+    return depth_resized_exp
+
 
 # def read_imageY(dPath):
 #     depth = misc.imread(dPath).astype(np.uint16) / 1000.0
@@ -291,24 +296,25 @@ class CollectOutputAndTarget(Callback):
         # print(mat2uint8(y_true))
         # print(mat2uint8(y_pred))
 
-        # TODO: Terminar
-        plt.figure(1)
-        plt.imshow(x_input[0, :, :, 0])
-        plt.draw()
+        if showImages:
+            plt.figure(1)
+            plt.imshow(x_input[0, :, :, 0])
+            plt.draw()
 
-        plt.figure(2)
-        plt.imshow(y_true[0, :, :, 0])
-        plt.draw()
+            plt.figure(2)
+            plt.imshow(y_true[0, :, :, 0])
+            plt.draw()
 
-        plt.figure(3)
-        plt.imshow(y_pred[0, :, :, 0])
-        plt.draw()
+            plt.figure(3)
+            plt.imshow(y_pred[0, :, :, 0])
+            plt.draw()
 
-        plt.pause(0.001)
+            plt.pause(0.001)
 
 
 class LossHistory(Callback):
-    def on_train_begin(self, logs={}):
+    def __init__(self):
+        super(LossHistory, self).__init__()
         self.losses = []
 
     def on_batch_end(self, batch, logs={}):
@@ -340,7 +346,7 @@ if __name__ == "__main__":
 
     model.summary()
 
-    input("Press ENTER to start training...")   # TODO: Descomentar
+    input("Press ENTER to start training...")  # TODO: Descomentar
 
     # ----- Training Configuration ----- #
     lr = 1e-3
@@ -357,12 +363,14 @@ if __name__ == "__main__":
     fetches = [tf.assign(cbk.var_x_input, model.inputs[0], validate_shape=False),
                tf.assign(cbk.var_y_true, model.targets[0], validate_shape=False),
                tf.assign(cbk.var_y_pred, model.outputs[0], validate_shape=False)]
-    model._function_kwargs = {'fetches': fetches}  # use `model._function_kwargs` if using `Model` instead of `Sequential`
+    model._function_kwargs = {
+        'fetches': fetches}  # use `model._function_kwargs` if using `Model` instead of `Sequential`
 
     # history = LossHistory()
 
     # ----- Run Training ----- #
-    model.fit_generator(imageLoader(dataset.depth_sparse_filenames, dataset.depth_gt_filenames, batch_size), steps_per_epoch, epochs, callbacks=[cbk])
+    model.fit_generator(imageLoader(dataset.depth_sparse_filenames, dataset.depth_gt_filenames, batch_size),
+                        steps_per_epoch, epochs, callbacks=[cbk])
     # model.fit_generator(imageLoader(dataset.depth_sparse_filenames, dataset.depth_gt_filenames, batch_size), steps_per_epoch, epochs, callbacks=[cbk, history])
 
     # ----- Results ----- #
