@@ -138,7 +138,25 @@ def model_4():
     # new_outputs = resnet_model(new_conv1_pad)
 
     resnet_output = resnet_model(new_input_layer)
-    new_outputs = Conv2D(1, 3, activation="sigmoid", padding="same")(resnet_output)
+
+    up_1 = UpSampling2D((2, 2))(resnet_output)
+    conv_4_a = Conv2D(16, 3, activation="relu", padding="same")(up_1)
+    conv_4_b = Conv2D(16, 3, activation="relu", padding="same")(conv_4_a)
+
+    up_2 = UpSampling2D((2, 2))(conv_4_a)
+    conv_5_a = Conv2D(8, 3, activation="relu", padding="same")(up_2)
+    conv_5_b = Conv2D(8, 3, activation="relu", padding="same")(conv_5_a)
+
+    up_3 = UpSampling2D((2, 2))(conv_5_b)
+    conv_6_a = Conv2D(8, 3, activation="relu", padding="same")(up_3)
+    conv_6_b = Conv2D(8, 3, activation="relu", padding="same")(conv_6_a)
+
+    up_4 = UpSampling2D((2, 2))(conv_6_b)
+    conv_7_a = Conv2D(8, 3, activation="relu", padding="same")(up_4)
+    conv_7_b = Conv2D(8, 3, activation="relu", padding="same")(conv_7_a)
+
+    up_5 = UpSampling2D((2, 2))(conv_7_b)
+    new_outputs = Conv2D(1, 3, activation="sigmoid", padding="same")(up_5)
 
     new_model = Model(new_input_layer, new_outputs)
 
@@ -207,7 +225,7 @@ def read_imageX(dsPath):
 
 def read_imageY(dPath):
     depth = misc.imread(dPath).astype(np.uint16) / 1000.0
-    depth_resized = resize(depth, output_shape=(7, 7))  # (480,640) -> Model Output (224, 224)
+    depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> Model Output (224, 224)
 
     return np.expand_dims(np.expand_dims(depth_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
 
