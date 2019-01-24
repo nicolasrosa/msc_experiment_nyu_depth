@@ -23,6 +23,7 @@ from skimage.transform import resize
 
 warnings.filterwarnings("ignore")
 showImages = False
+saveModel = False
 
 
 # =========== #
@@ -128,12 +129,12 @@ def model_4():
     resnet_model.layers.pop(0)
     # resnet_model.layers.pop(0)
     # resnet_model.layers.pop(0)
-    resnet_model.layers.pop()
-    resnet_model.summary()
+    # resnet_model.layers.pop()
+    # resnet_model.summary()
 
     # ----- New Model ----- #
     # Overwrites ResNet layers
-    new_input_layer = Input(batch_shape=(None, 224, 224, 3))  # FIXME: O mais correto seria (224, 224, 1)
+    new_input_layer = Input(batch_shape=(None, 224, 224, 3), name='input_1')  # FIXME: O mais correto seria (224, 224, 1)
     # new_conv1_pad = ZeroPadding2D(padding=(1, 1))(new_input_layer)
     # new_conv_1 = Conv2D(1, 3, activation="relu", padding="same")(new_conv1_pad)
     # new_outputs = resnet_model(new_conv1_pad)
@@ -165,6 +166,8 @@ def model_4():
     # print(new_model.layers[0].output)
     # print(new_model.layers[1].output)
     # print(new_model.layers[2].output)
+    # print([item.get_output_at(0) for item in new_model.layers])
+    # input("Continue...")
 
     return new_model
 
@@ -233,13 +236,6 @@ def read_imageY(dPath):
 
     return depth_resized_exp
 
-
-# def read_imageY(dPath):
-#     depth = misc.imread(dPath).astype(np.uint16) / 1000.0
-#     depth_resized = resize(depth, output_shape=(7, 7))  # (480,640) -> Model Output (224, 224)
-#     depth_resized_exp = np.expand_dims(depth_resized, axis=0)  # (224, 224) -> (1, 224, 224)
-#
-#     return depth_resized_exp
 
 def imageLoader(depth_sparse_filenames, depth_gt_filenames, batch_size=4):
     assert len(depth_sparse_filenames) == len(depth_gt_filenames)
@@ -349,6 +345,7 @@ if __name__ == "__main__":
     input("Press ENTER to start training...")  # TODO: Descomentar
 
     # ----- Training Configuration ----- #
+    # Training Parameters
     lr = 1e-3
     decay = 1e-2
     batch_size = 4
@@ -363,8 +360,7 @@ if __name__ == "__main__":
     fetches = [tf.assign(cbk.var_x_input, model.inputs[0], validate_shape=False),
                tf.assign(cbk.var_y_true, model.targets[0], validate_shape=False),
                tf.assign(cbk.var_y_pred, model.outputs[0], validate_shape=False)]
-    model._function_kwargs = {
-        'fetches': fetches}  # use `model._function_kwargs` if using `Model` instead of `Sequential`
+    model._function_kwargs = {'fetches': fetches}  # use `model._function_kwargs` if using `Model` instead of `Sequential`
 
     # history = LossHistory()
 
@@ -377,8 +373,9 @@ if __name__ == "__main__":
     # print(history.losses)
 
     # ----- Save ----- #
-    model.save_weights('weights_%s.h5' % model_name)
-    model.save('model_%s.h5' % model_name)
+    if saveModel:
+        model.save_weights('weights_%s.h5' % model_name)
+        model.save('model_%s.h5' % model_name) # FIXME: Não está salvando com o modelo da ResNet
 
     # out_folder = 'preds_final'
     # if not os.path.exists(out_folder):
