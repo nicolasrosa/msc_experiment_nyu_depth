@@ -11,7 +11,7 @@ import tensorflow as tf
 
 from keras import backend as K
 from keras.callbacks import Callback
-from keras.layers import Conv2D, Input, MaxPooling2D as Pool, BatchNormalization as BN, UpSampling2D, ZeroPadding2D
+from keras.layers import Conv2D, Input, MaxPooling2D as Pool, BatchNormalization as BN, UpSampling2D, ZeroPadding2D, Concatenate
 from keras.models import Model
 from keras.optimizers import SGD
 from keras.applications.resnet50 import ResNet50, preprocess_input
@@ -22,7 +22,7 @@ from skimage.transform import resize
 # from keras.applications import VGG16
 
 warnings.filterwarnings("ignore")
-showImages = False
+showImages = True
 saveModel = False
 
 
@@ -134,12 +134,13 @@ def model_4():
 
     # ----- New Model ----- #
     # Overwrites ResNet layers
-    new_input_layer = Input(batch_shape=(None, 224, 224, 3), name='input_1')  # FIXME: O mais correto seria (224, 224, 1)
+    new_input_layer = Input(batch_shape=(None, 224, 224, 1), name='input_1')  # FIXME: O mais correto seria (224, 224, 1)
+    new_input_conc = Concatenate()([new_input_layer, new_input_layer, new_input_layer])
     # new_conv1_pad = ZeroPadding2D(padding=(1, 1))(new_input_layer)
     # new_conv_1 = Conv2D(1, 3, activation="relu", padding="same")(new_conv1_pad)
     # new_outputs = resnet_model(new_conv1_pad)
 
-    resnet_output = resnet_model(new_input_layer)
+    resnet_output = resnet_model(new_input_conc)
 
     up_1 = UpSampling2D((2, 2))(resnet_output)
     conv_4_a = Conv2D(16, 3, activation="relu", padding="same")(up_1)
@@ -215,24 +216,19 @@ class NYUDepth:
 def read_imageX(dsPath):
     depth_sparse = misc.imread(dsPath).astype(np.uint16) / 1000.0
     depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480, 640) -> (224, 224)
-    depth_sparse_resized_stacked = np.stack((depth_sparse_resized,) * 3, axis=-1)  # (480, 640) -> (224, 224, 3)
-    depth_sparse_resized_stacked_exp = np.expand_dims(depth_sparse_resized_stacked,
-                                                      axis=0)  # (224, 224, 3) -> Model Input (1, 224, 224, 3)
+    depth_sparse_resized_exp = np.expand_dims(np.expand_dims(depth_sparse_resized, -1), 0) # (224, 224) -> Model Input (1, 224, 224, 1)
 
     # print(depth_sparse.shape)
     # print(depth_sparse_resized.shape)
-    # print(depth_sparse_resized_stacked.shape)
-    # print(depth_sparse_resized_stacked_exp.shape)
 
     # return np.expand_dims(np.expand_dims(depth_sparse_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
-    return depth_sparse_resized_stacked_exp
+    return depth_sparse_resized_exp
 
 
 def read_imageY(dPath):
     depth = misc.imread(dPath).astype(np.uint16) / 1000.0
     depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> (224, 224)
-    depth_resized_exp = np.expand_dims(np.expand_dims(depth_resized, -1),
-                                       0)  # (224, 224) -> Model Output (1, 224, 224, 1)
+    depth_resized_exp = np.expand_dims(np.expand_dims(depth_resized, -1), 0)  # (224, 224) -> Model Output (1, 224, 224, 1)
 
     return depth_resized_exp
 
