@@ -76,10 +76,10 @@ class Plot(object):
 
         self.isInitialized = False
 
-    def showTrainResults(self, input, label, pred):
+    def showTrainResults(self, raw, label, pred):
 
         if not self.isInitialized:
-            self.cax0 = self.axes[0].imshow(input)
+            self.cax0 = self.axes[0].imshow(raw)
             self.cax1 = self.axes[1].imshow(label)
             self.cax2 = self.axes[2].imshow(pred)
 
@@ -91,12 +91,12 @@ class Plot(object):
             self.isInitialized = True
         else:
             # Updates Colorbars
-            updateColorBar(self.cbar0, input)
+            updateColorBar(self.cbar0, raw)
             updateColorBar(self.cbar1, label)
             updateColorBar(self.cbar2, pred)
 
             # Updates Images
-            self.cax0.set_data(input)
+            self.cax0.set_data(raw)
             self.cax1.set_data(label)
             self.cax2.set_data(pred)
             plt.draw()
