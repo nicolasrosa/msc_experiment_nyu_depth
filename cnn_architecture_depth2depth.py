@@ -18,6 +18,7 @@ from keras.applications.resnet50 import ResNet50, preprocess_input
 
 from scipy import misc
 from skimage.transform import resize
+from plot import Plot
 
 # from keras.applications import VGG16
 
@@ -179,9 +180,9 @@ class NYUDepth:
         self.depth_gt_filenames = None
 
         self.X_train = None
-        self.X_valid = None
+        self.X_test = None
         self.Y_train = None
-        self.Y_valid = None
+        self.Y_test = None
 
     def read(self):
         """Get filenames for the input/output images"""
@@ -192,25 +193,32 @@ class NYUDepth:
     def train_test_split(self):
         # Inputs
         self.X_train = sorted(glob('nyu_depth/training/*_depth_sparse.png'))
-        self.X_valid = sorted(glob('nyu_depth/testing/*_depth_sparse.png'))
+        self.X_test = sorted(glob('nyu_depth/testing/*_depth_sparse.png'))
 
         # Outputs
         self.Y_train = sorted(glob('nyu_depth/training/*_depth.png'))
-        self.Y_valid = sorted(glob('nyu_depth/testing/*_depth.png'))
+        self.Y_test = sorted(glob('nyu_depth/testing/*_depth.png'))
 
-    def summary(self):
+    def summary(self, showFilenames=False):
         if (self.depth_sparse_filenames is not None) and (self.depth_gt_filenames is not None):
             print(len(self.depth_sparse_filenames))
             print(len(self.depth_gt_filenames))
         else:
-            print(self.X_train)
-            print(len(self.X_train))
-            print(self.X_valid)
-            print(len(self.X_valid))
-            print(self.Y_train)
-            print(len(self.Y_train))
-            print(self.Y_valid)
-            print(len(self.Y_valid))
+            # TODO: Otimizar
+            if showFilenames:
+                print(self.X_train )
+                print(len(self.X_train))
+                print(self.X_test)
+                print(len(self.X_test))
+                print(self.Y_train)
+                print(len(self.Y_train))
+                print(self.Y_test)
+                print(len(self.Y_test))
+            else:
+                print(len(self.X_train))
+                print(len(self.X_test))
+                print(len(self.Y_train))
+                print(len(self.Y_test))
 
 
 def read_imageX(dsPath):
@@ -277,6 +285,8 @@ class CollectOutputAndTarget(Callback):
         self.var_y_true = tf.Variable(0., validate_shape=False)
         self.var_y_pred = tf.Variable(0., validate_shape=False)
 
+        self.train_plotObj = Plot('train', title='Train Predictions')
+
     def on_batch_end(self, batch, logs=None):
         # evaluate the variables and save them into lists
         x_input = K.eval(self.var_x_input)
@@ -289,19 +299,21 @@ class CollectOutputAndTarget(Callback):
         # print(mat2uint8(y_pred))
 
         if showImages:
-            plt.figure(1)
-            plt.imshow(x_input[0, :, :, 0])
-            plt.draw()
+        #     plt.figure(1)
+        #     plt.imshow(x_input[0, :, :, 0])
+        #     plt.draw()
+        #
+        #     plt.figure(2)
+        #     plt.imshow()
+        #     plt.draw()
+        #
+        #     plt.figure(3)
+        #     plt.imshow()
+        #     plt.draw()
+        #
+        #     plt.pause(0.001)
 
-            plt.figure(2)
-            plt.imshow(y_true[0, :, :, 0])
-            plt.draw()
-
-            plt.figure(3)
-            plt.imshow(y_pred[0, :, :, 0])
-            plt.draw()
-
-            plt.pause(0.001)
+            self.train_plotObj.showTrainResults(x_input[0, :, :, 0], y_true[0, :, :, 0], y_pred[0, :, :, 0])
 
 
 class LossHistory(Callback):
@@ -320,8 +332,8 @@ if __name__ == "__main__":
     # ----- Dataset----- #
     dataset = NYUDepth()
 
-    dataset.read()
-    # dataset.train_test_split()
+    # dataset.read()
+    dataset.train_test_split()
     dataset.summary()
 
     # ----- Model Definition----- #
@@ -345,7 +357,6 @@ if __name__ == "__main__":
     lr = 1e-3
     decay = 1e-2
     batch_size = 4
-    steps_per_epoch = 50000
     epochs = 10
 
     model.compile(loss="mse", optimizer=SGD(lr=lr, decay=decay))
@@ -361,9 +372,13 @@ if __name__ == "__main__":
     # history = LossHistory()
 
     # ----- Run Training ----- #
-    model.fit_generator(imageLoader(dataset.depth_sparse_filenames, dataset.depth_gt_filenames, batch_size),
-                        steps_per_epoch, epochs, callbacks=[cbk])
-    # model.fit_generator(imageLoader(dataset.depth_sparse_filenames, dataset.depth_gt_filenames, batch_size), steps_per_epoch, epochs, callbacks=[cbk, history])
+    model.fit_generator(imageLoader(dataset.X_train, dataset.Y_train, batch_size),
+                        steps_per_epoch=(len(dataset.X_train) // batch_size)+1,
+                        epochs=epochs,
+                        validation_data=imageLoader(dataset.X_test, dataset.Y_test), # FIXME: Estou usando as 654 imagens de teste para validação, o mais correto é utilizar uma parcela das de treinamento como validação, e deixar as imagens de teste exclusivamente para avaliação do método.
+                        validation_steps=(len(dataset.X_test) // batch_size) + 1,
+                        callbacks=[cbk])
+                        # callbacks=[cbk, history])
 
     # ----- Results ----- #
     # print(history.losses)
