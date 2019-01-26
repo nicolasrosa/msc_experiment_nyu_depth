@@ -345,7 +345,7 @@ if __name__ == "__main__":
     lr = 1e-3
     decay = 1e-2
     batch_size = 4
-    steps_per_epoch = 30000
+    steps_per_epoch = 50000
     epochs = 10
 
     model.compile(loss="mse", optimizer=SGD(lr=lr, decay=decay))
