@@ -150,7 +150,7 @@ if __name__ == "__main__":
     lr = 1e-3
     decay = 1e-2
     batch_size = 4
-    epochs = 10
+    epochs = 10000
 
     model.compile(loss="mse", optimizer=SGD(lr=lr, decay=decay))
 
