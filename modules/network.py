@@ -101,6 +101,7 @@ def model_3():
 def model_4():
     # ----- Base Model ----- #
     resnet_model = ResNet50(include_top=False, weights="imagenet")
+    resnet_model.trainable = True
     # resnet_model.summary()
 
     # print(resnet_model.layers[0].output)
