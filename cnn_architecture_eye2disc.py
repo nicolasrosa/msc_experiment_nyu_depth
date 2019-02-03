@@ -164,9 +164,10 @@ if __name__ == "__main__":
         'fetches': fetches}  # use `model._function_kwargs` if using `Model` instead of `Sequential`
 
     # history = LossHistory()
-	if train_on_one_image:
-    	dataset.X_train = [dataset.X_train[0]]
-    	dataset.Y_train = [dataset.Y_train[0]]
+
+    if train_on_one_image:
+        dataset.X_train = [dataset.X_train[0]]
+        dataset.Y_train = [dataset.Y_train[0]]
 
     # ----- Run Training ----- #
     # FIXME: Wrong!!!
