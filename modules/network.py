@@ -117,14 +117,14 @@ def model_4():
 
     # ----- New Model ----- #
     # Overwrites ResNet layers
-    new_input_layer = Input(batch_shape=(None, 224, 224, 1),
+    new_input_layer = Input(batch_shape=(None, 224, 224, 3),
                             name='input_1')  # FIXME: O mais correto seria (224, 224, 1)
-    new_input_conc = Concatenate()([new_input_layer, new_input_layer, new_input_layer])
+    # new_input_conc = Concatenate()([new_input_layer, new_input_layer, new_input_layer])
     # new_conv1_pad = ZeroPadding2D(padding=(1, 1))(new_input_layer)
     # new_conv_1 = Conv2D(1, 3, activation="relu", padding="same")(new_conv1_pad)
     # new_outputs = resnet_model(new_conv1_pad)
 
-    resnet_output = resnet_model(new_input_conc)
+    resnet_output = resnet_model(new_input_layer)
 
     up_1 = UpSampling2D((2, 2))(resnet_output)
     conv_4_a = Conv2D(16, 3, activation="relu", padding="same")(up_1)

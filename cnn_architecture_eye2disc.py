@@ -14,7 +14,7 @@ from keras.optimizers import SGD
 from scipy import misc
 from skimage.transform import resize
 
-from modules.nyudepth import IDRID
+from modules.idrid import IDRID
 from modules.network import *
 from modules.plot import Plot
 
@@ -26,30 +26,29 @@ saveModel = False
 # =========== #
 #  Functions  #
 # =========== #
-def read_imageX(dsPath):
-    depth_sparse = misc.imread(dsPath).astype(np.uint16) / 1000.0
-    depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480, 640) -> (224, 224)
-    depth_sparse_resized_exp = np.expand_dims(np.expand_dims(depth_sparse_resized, -1), 0)  # (224, 224) -> Model Input (1, 224, 224, 1)
+def read_imageX(imagePath):
+    image = misc.imread(imagePath)
+    image_resized = resize(image, output_shape=(224, 224))  # (2848, 4288) -> (224, 224, 3)
+    image_resized_exp = np.expand_dims(image_resized, 0)  # (224, 224, 3) -> Model Input (1, 224, 224, 3)
 
-    # print(depth_sparse.shape)
-    # print(depth_sparse_resized.shape)
+    # print(image_resized_exp.shape)
 
-    # return np.expand_dims(np.expand_dims(depth_sparse_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
-    return depth_sparse_resized_exp
-
-
-def read_imageY(dPath):
-    depth = misc.imread(dPath).astype(np.uint16) / 1000.0
-    depth_resized = resize(depth, output_shape=(224, 224))  # (480,640) -> (224, 224)
-    depth_resized_exp = np.expand_dims(np.expand_dims(depth_resized, -1), 0)  # (224, 224) -> Model Output (1, 224, 224, 1)
-
-    return depth_resized_exp
+    # return np.expand_dims(np.expand_dims(image_resized, -1), 0)  # (224, 224) -> (1, 224, 224, 1)
+    return image_resized_exp
 
 
-def imageLoader(depth_sparse_filenames, depth_gt_filenames, batch_size=4):
-    assert len(depth_sparse_filenames) == len(depth_gt_filenames)
+def read_imageY(gtPath):
+    gt = misc.imread(gtPath)
+    gt_resized = resize(gt, output_shape=(224, 224))  # (2848, 4288) -> (224, 224)
+    gt_resized_exp = np.expand_dims(np.expand_dims(gt_resized, -1), 0)  # (224, 224) -> Model Output (1, 224, 224, 1)
 
-    numSamples = len(depth_sparse_filenames)
+    return gt_resized_exp
+
+
+def imageLoader(image_filenames, gt_filenames, batch_size=4):
+    assert len(image_filenames) == len(gt_filenames)
+
+    numSamples = len(image_filenames)
 
     # This line is just to make the generator infinite, Keras needs that
     while True:
@@ -60,8 +59,8 @@ def imageLoader(depth_sparse_filenames, depth_gt_filenames, batch_size=4):
         while batch_start < numSamples:
             limit = min(batch_end, numSamples)
 
-            X_batch = np.concatenate(list(map(read_imageX, depth_sparse_filenames[batch_start:limit])), 0)
-            Y_batch = np.concatenate(list(map(read_imageY, depth_gt_filenames[batch_start:limit])), 0)
+            X_batch = np.concatenate(list(map(read_imageX, image_filenames[batch_start:limit])), 0)
+            Y_batch = np.concatenate(list(map(read_imageY, gt_filenames[batch_start:limit])), 0)
 
             # print(X_batch.shape)
             # print(Y_batch.shape)
@@ -104,7 +103,7 @@ class CollectOutputAndTarget(Callback):
         # print(mat2uint8(y_pred))
 
         if showImages:
-            self.train_plotObj.showTrainResults(x_input[0, :, :, 0], y_true[0, :, :, 0], y_pred[0, :, :, 0])
+            self.train_plotObj.showTrainResults(x_input[0, :, :, :], y_true[0, :, :, 0], y_pred[0, :, :, 0])
 
 
 class LossHistory(Callback):
@@ -123,9 +122,9 @@ if __name__ == "__main__":
     # ----- Dataset----- #
     dataset = IDRID()
 
-    # dataset.read()
     dataset.train_test_split()
-    dataset.summary()
+    # dataset.summary()
+    dataset.summary(showFilenames=True)
 
     # ----- Model Definition----- #
     model_num = 4
@@ -164,6 +163,7 @@ if __name__ == "__main__":
     # history = LossHistory()
 
     # ----- Run Training ----- #
+    # FIXME: Wrong!!!
     model.fit_generator(generator=imageLoader(dataset.X_train, dataset.Y_train, batch_size),
                         steps_per_epoch=(len(dataset.X_train) // batch_size) + 1,
                         epochs=epochs,

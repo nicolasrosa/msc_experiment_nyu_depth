@@ -7,35 +7,29 @@ from glob import glob
 # ======= #
 #  Class  #
 # ======= #
-class NYUDepth:
+class IDRID:
     def __init__(self):
-        self.depth_sparse_filenames = None
-        self.depth_gt_filenames = None
+        self.image_filenames = None
+        self.gt_filenames = None
 
         self.X_train = None
         self.X_test = None
         self.Y_train = None
         self.Y_test = None
 
-    def read(self):
-        """Get filenames for the input/output images"""
-
-        self.depth_sparse_filenames = sorted(glob('nyu_depth/*/*_depth_sparse.png'))
-        self.depth_gt_filenames = sorted(glob('nyu_depth/*/*_depth.png'))
-
     def train_test_split(self):
         # Inputs
-        self.X_train = sorted(glob('nyu_depth/training/*_depth_sparse.png'))
-        self.X_test = sorted(glob('nyu_depth/testing/*_depth_sparse.png'))
+        self.X_train = sorted(glob('datasets/idrid/training/image_*.jpg'))
+        self.X_test = sorted(glob('datasets/idrid/testing/image_*.jpg'))
 
         # Outputs
-        self.Y_train = sorted(glob('nyu_depth/training/*_depth.png'))
-        self.Y_test = sorted(glob('nyu_depth/testing/*_depth.png'))
+        self.Y_train = sorted(glob('datasets/idrid/training/gt_*.png'))
+        self.Y_test = sorted(glob('datasets/idrid/testing/gt_*.png'))
 
     def summary(self, showFilenames=False):
-        if (self.depth_sparse_filenames is not None) and (self.depth_gt_filenames is not None):
-            print(len(self.depth_sparse_filenames))
-            print(len(self.depth_gt_filenames))
+        if (self.image_filenames is not None) and (self.gt_filenames is not None):
+            print(len(self.image_filenames))
+            print(len(self.gt_filenames))
         else:
             # TODO: Otimizar
             if showFilenames:

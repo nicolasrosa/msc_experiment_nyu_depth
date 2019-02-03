@@ -42,9 +42,9 @@ class Plot(object):
             # self.axes[3] = plt.subplot(134)
 
             # Sets Titles
-            self.axes[0].set_title("Depth (Sparse)")
-            self.axes[1].set_title("Depth (GT)")
-            self.axes[2].set_title("Depth (Pred)")
+            self.axes[0].set_title("Eye")
+            self.axes[1].set_title("Disc (GT)")
+            self.axes[2].set_title("Disc (Pred)")
 
         elif mode == 'test':
             self.fig = plt.figure()
