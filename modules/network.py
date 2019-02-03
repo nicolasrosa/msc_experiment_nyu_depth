@@ -143,7 +143,7 @@ def model_4():
     conv_7_b = Conv2D(8, 3, activation="relu", padding="same")(conv_7_a)
 
     up_5 = UpSampling2D((2, 2))(conv_7_b)
-    new_outputs = Conv2D(1, 3, activation="linear", padding="same")(up_5)
+    new_outputs = Conv2D(1, 3, activation="sigmoid", padding="same")(up_5)
 
     new_model = Model(new_input_layer, new_outputs)
 
