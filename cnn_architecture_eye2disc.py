@@ -21,13 +21,14 @@ from modules.plot import Plot
 warnings.filterwarnings("ignore")
 showImages = True
 saveModel = False
+train_on_one_image = True
 
 
 # =========== #
 #  Functions  #
 # =========== #
 def read_imageX(imagePath):
-    image = misc.imread(imagePath)
+    image = (misc.imread(imagePath) - 127.5)/127.5
     image_resized = resize(image, output_shape=(224, 224))  # (2848, 4288) -> (224, 224, 3)
     image_resized_exp = np.expand_dims(image_resized, 0)  # (224, 224, 3) -> Model Input (1, 224, 224, 3)
 
@@ -40,6 +41,7 @@ def read_imageX(imagePath):
 def read_imageY(gtPath):
     gt = misc.imread(gtPath)
     gt_resized = resize(gt, output_shape=(224, 224))  # (2848, 4288) -> (224, 224)
+    # gt_resized = resize(gt, output_shape=(416, 416))  # (2848, 4288) -> (224, 224)
     gt_resized_exp = np.expand_dims(np.expand_dims(gt_resized, -1), 0)  # (224, 224) -> Model Output (1, 224, 224, 1)
 
     return gt_resized_exp
@@ -144,7 +146,8 @@ if __name__ == "__main__":
 
     # ----- Training Configuration ----- #
     # Training Parameters
-    lr = 1e-3
+    # lr = 1e-3
+    lr = 0.01
     decay = 1e-2
     batch_size = 4
     epochs = 10000
@@ -161,15 +164,18 @@ if __name__ == "__main__":
         'fetches': fetches}  # use `model._function_kwargs` if using `Model` instead of `Sequential`
 
     # history = LossHistory()
+	if train_on_one_image:
+    	dataset.X_train = [dataset.X_train[0]]
+    	dataset.Y_train = [dataset.Y_train[0]]
 
     # ----- Run Training ----- #
     # FIXME: Wrong!!!
     model.fit_generator(generator=imageLoader(dataset.X_train, dataset.Y_train, batch_size),
                         steps_per_epoch=(len(dataset.X_train) // batch_size) + 1,
                         epochs=epochs,
-                        validation_data=imageLoader(dataset.X_test, dataset.Y_test),
+                        # validation_data=imageLoader(dataset.X_test, dataset.Y_test),
                         # FIXME: Estou usando as 654 imagens de teste para validação, o mais correto é utilizar uma parcela das de treinamento como validação, e deixar as imagens de teste exclusivamente para avaliação do método.
-                        validation_steps=(len(dataset.X_test) // batch_size) + 1,
+                        # validation_steps=(len(dataset.X_test) // batch_size) + 1,
                         callbacks=[cbk])
     # callbacks=[cbk, history])
 

@@ -13,7 +13,7 @@ from keras.applications.resnet50 import ResNet50
 #  Functions  #
 # =========== #
 def model_1():
-    input_layer = Input(shape=(224, 224, 1))
+    input_layer = Input(shape=(224, 224, 3))
     conv_1_a = Conv2D(8, 3, activation="relu", padding="same")(input_layer)
     conv_1_b = Conv2D(8, 3, activation="relu", padding="same")(conv_1_a)
     pool_1 = Pool((2, 2))(conv_1_b)
@@ -76,7 +76,7 @@ def model_3():
 
     from keras.layers import Conv2DTranspose as DeConv
     resnet = ResNet50(include_top=False, weights="imagenet")
-    resnet.trainable = False
+    resnet.trainable = True
 
     res_features = resnet(input_layer)
 
@@ -101,6 +101,7 @@ def model_3():
 def model_4():
     # ----- Base Model ----- #
     resnet_model = ResNet50(include_top=False, weights="imagenet")
+    resnet_model.trainable = True
     # resnet_model.summary()
 
     # print(resnet_model.layers[0].output)
