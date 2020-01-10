@@ -14,7 +14,7 @@ from keras.optimizers import SGD
 from scipy import misc
 from skimage.transform import resize
 
-from modules.nyudepth import NYUDepth
+from modules.nyudepth import NYUDepth, NYUDepth2
 from modules.network import *
 from modules.plot import Plot
 
@@ -26,11 +26,16 @@ saveModel = False
 # =========== #
 #  Functions  #
 # =========== #
+# TODO: não é depth_sparse e sim colors
 def read_imageX(dsPath):
-    depth_sparse = misc.imread(dsPath).astype(np.uint16) / 1000.0
-    depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480, 640) -> (224, 224)
-    depth_sparse_resized_exp = np.expand_dims(np.expand_dims(depth_sparse_resized, -1),
-                                              0)  # (224, 224) -> Model Input (1, 224, 224, 1)
+    depth_sparse = misc.imread(dsPath)
+    depth_sparse_resized = resize(depth_sparse, output_shape=(224, 224))  # (480, 640, 3) -> (224, 224, 3)
+
+
+    depth_sparse_resized_exp = np.expand_dims(depth_sparse_resized, 0)  # (224, 224) -> Model Input (1, 224, 224, 1)
+
+    # print(depth_sparse_resized_exp.shape)
+    # input('aki')
 
     # print(depth_sparse.shape)
     # print(depth_sparse_resized.shape)
@@ -106,7 +111,7 @@ class CollectOutputAndTarget(Callback):
         # print(mat2uint8(y_pred))
 
         if showImages:
-            self.train_plotObj.showTrainResults(x_input[0, :, :, 0], y_true[0, :, :, 0], y_pred[0, :, :, 0])
+            self.train_plotObj.showTrainResults(x_input[0, :, :, :], y_true[0, :, :, 0], y_pred[0, :, :, 0])
 
 
 class LossHistory(Callback):
@@ -123,34 +128,36 @@ class LossHistory(Callback):
 # ====== #
 if __name__ == "__main__":
     # ----- Dataset----- #
-    dataset = NYUDepth()
+    dataset = NYUDepth2()
 
     # dataset.read()
     dataset.train_test_split()
     dataset.summary()
 
     # ----- Model Definition----- #
-    model_num = 4
-    model_name = ['hourglass', 'block', 'resglass', 'pirate'][model_num - 1]
+    model_num = 5
+    model_name = ['hourglass', 'block', 'resglass', 'pirate', 'cachorro'][model_num - 1]
     if model_num == 1:
         model = model_1()
     elif model_num == 2:
         model = model_2()
     elif model_num == 3:
         model = model_3()
-    else:
+    elif model_num == 4:
         model = model_4()
+    else:
+        model = model_5()
 
     model.summary()
 
-    input("Press ENTER to start training...")  # TODO: Descomentar
+    # input("Press ENTER to start training...")  # TODO: Descomentar
 
     # ----- Training Configuration ----- #
     # Training Parameters
     lr = 1e-3
     decay = 1e-2
     batch_size = 4
-    epochs = 10000
+    epochs = 200
 
     model.compile(loss="mse", optimizer=SGD(lr=lr, decay=decay))
 
@@ -170,7 +177,6 @@ if __name__ == "__main__":
                         steps_per_epoch=(len(dataset.X_train) // batch_size) + 1,
                         epochs=epochs,
                         validation_data=imageLoader(dataset.X_test, dataset.Y_test),
-                        # FIXME: Estou usando as 654 imagens de teste para validação, o mais correto é utilizar uma parcela das de treinamento como validação, e deixar as imagens de teste exclusivamente para avaliação do método.
                         validation_steps=(len(dataset.X_test) // batch_size) + 1,
                         callbacks=[cbk])
     # callbacks=[cbk, history])
@@ -181,7 +187,7 @@ if __name__ == "__main__":
     # ----- Save ----- #
     if saveModel:
         model.save_weights('weights_%s.h5' % model_name)
-        model.save('model_%s.h5' % model_name)  # FIXME: Não está salvando com o modelo da ResNet
+        model.save('model_%s.h5' % model_name)
 
     # out_folder = 'preds_final'
     # if not os.path.exists(out_folder):
